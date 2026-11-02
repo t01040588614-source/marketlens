@@ -10,6 +10,10 @@ from app.services.portfolio_service import PortfolioService
 router = APIRouter()
 
 
+# "" 경로도 함께 받습니다. 없으면 /portfolio 요청이 /portfolio/ 로 리다이렉트되고,
+# 프론트 프록시를 거치면 다른 출처(API 호스트)로 넘어가면서
+# 브라우저가 Authorization 헤더를 빼서 401 → 강제 로그아웃이 됩니다.
+@router.get("", response_model=list[PortfolioResponse], include_in_schema=False)
 @router.get("/", response_model=list[PortfolioResponse])
 async def get_portfolio(
     db: AsyncSession = Depends(get_db),
@@ -21,6 +25,12 @@ async def get_portfolio(
     return portfolios
 
 
+@router.post(
+    "",
+    response_model=PortfolioResponse,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
 @router.post("/", response_model=PortfolioResponse, status_code=status.HTTP_201_CREATED)
 async def add_to_portfolio(
     portfolio_in: PortfolioCreate,
