@@ -21,7 +21,7 @@ try {
     $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 } catch { }
 
-$root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$root = Split-Path -Parent $PSScriptRoot
 $backend = Join-Path $root 'stock-backend'
 $frontend = Join-Path $root 'my-frontend'
 $venvPy = Join-Path $backend 'venv\Scripts\python.exe'
@@ -38,9 +38,52 @@ function Test-FrontendBuildPresent {
     return Test-Path (Join-Path $frontend '.next\BUILD_ID')
 }
 
+function Test-FrontendBuildStale {
+    $buildIdPath = Join-Path $frontend '.next\BUILD_ID'
+    if (-not (Test-Path $buildIdPath)) { return $true }
+    $buildTime = (Get-Item $buildIdPath).LastWriteTime
+    $srcRoot = Join-Path $frontend 'src'
+    if (-not (Test-Path $srcRoot)) { return $false }
+    $newer = Get-ChildItem $srcRoot -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.LastWriteTime -gt $buildTime } |
+        Select-Object -First 1
+    return ($null -ne $newer)
+}
+
+function Test-FrontendJsChunks([string]$PagePath = '/markets') {
+    try {
+        $page = Invoke-WebRequest -Uri ("http://127.0.0.1:3000" + $PagePath) -UseBasicParsing -TimeoutSec 25
+        if ($page.StatusCode -ne 200) { return $false }
+        $scripts = [regex]::Matches($page.Content, 'src="(/_next/static/chunks/[^"]+\.js[^"]*)"') |
+            ForEach-Object { $_.Groups[1].Value } |
+            Select-Object -Unique
+        if ($scripts.Count -lt 1) { return $true }
+        $checked = 0
+        foreach ($src in ($scripts | Select-Object -First 10)) {
+            $checked++
+            $url = 'http://127.0.0.1:3000' + $src
+            try {
+                $r = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 15
+                if ($r.StatusCode -ge 400) { return $false }
+            } catch {
+                return $false
+            }
+        }
+        return ($checked -gt 0)
+    } catch {
+        return $false
+    }
+}
+
 function Open-DashboardBrowser {
     if ($NoBrowser) { return }
-    Start-Process 'http://127.0.0.1:3000/markets'
+    $url = 'http://127.0.0.1:3000/markets'
+    Write-Host "Opening browser: $url" -ForegroundColor Cyan
+    try {
+        Start-Process $url | Out-Null
+    } catch {
+        cmd /c start "" $url | Out-Null
+    }
 }
 
 function Stop-PortListener([int]$Port) {
@@ -71,21 +114,6 @@ function Test-DockerEngine {
     if (-not (Test-CommandOnPath 'docker')) { return $false }
     docker info *> $null
     return $LASTEXITCODE -eq 0
-}
-
-function Wait-DockerEngine([int]$MaxSeconds = 120) {
-    if (Test-DockerEngine) { return $true }
-    $dockerExe = Join-Path ${env:ProgramFiles} 'Docker\Docker\Docker Desktop.exe'
-    if (Test-Path $dockerExe) {
-        Write-Host '  Starting Docker Desktop (waiting for engine)...'
-        Start-Process -FilePath $dockerExe -ErrorAction SilentlyContinue | Out-Null
-    }
-    $deadline = (Get-Date).AddSeconds($MaxSeconds)
-    while ((Get-Date) -lt $deadline) {
-        if (Test-DockerEngine) { return $true }
-        Start-Sleep -Seconds 5
-    }
-    return $false
 }
 
 function Ensure-RootDockerEnv {
@@ -158,7 +186,7 @@ function Ensure-PostgresDocker {
         Write-Host '  [WARN] docker CLI not found — use stock-backend\.use_sqlite or install Docker Desktop' -ForegroundColor Yellow
         return $false
     }
-    if (-not (Wait-DockerEngine)) {
+    if (-not (Test-DockerEngine)) {
         Write-Host '  [WARN] Docker Desktop is NOT running (dockerDesktopLinuxEngine pipe missing).' -ForegroundColor Yellow
         Write-Host '         Start Docker Desktop and re-run, OR create stock-backend\.use_sqlite for quotes-only mode.' -ForegroundColor Yellow
         return $false
@@ -208,13 +236,64 @@ function Ensure-FrontendEnv {
 NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1
 NEXT_PUBLIC_WS_URL=ws://127.0.0.1:8000/api/v1/ws/stocks
 STOCK_API_PROXY=http://127.0.0.1:8000
+
+# 자동 REST 시세 폴링: live | balanced | eco (가격은 WS 우선)
+NEXT_PUBLIC_QUOTE_REFRESH_PRESET=live
 "@
     if (-not (Test-Path $example)) {
         Set-Content -Path $example -Value $default -Encoding UTF8
     }
     if (-not (Test-Path $envPath)) {
-        Write-Host '  Created .env.local (API proxy and WebSocket URLs)'
-        Set-Content -Path $envPath -Value $default -Encoding UTF8
+        Write-Host '  Created .env.local (API, WebSocket, live refresh preset)'
+        if (Test-Path $example) {
+            Copy-Item -Path $example -Destination $envPath
+        } else {
+            Set-Content -Path $envPath -Value $default -Encoding UTF8
+        }
+        return
+    }
+    $required = [ordered]@{
+        'NEXT_PUBLIC_QUOTE_REFRESH_PRESET' = 'live'
+        'NEXT_PUBLIC_API_URL'              = 'http://127.0.0.1:8000/api/v1'
+        'NEXT_PUBLIC_WS_URL'               = 'ws://127.0.0.1:8000/api/v1/ws/stocks'
+        'STOCK_API_PROXY'                  = 'http://127.0.0.1:8000'
+    }
+    $lines = Get-Content $envPath -Encoding UTF8 -ErrorAction SilentlyContinue
+    if (-not $lines) { $lines = @() }
+    $present = @{}
+    foreach ($line in $lines) {
+        if ($line -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=') {
+            $present[$Matches[1]] = $true
+        }
+    }
+    $added = $false
+    foreach ($key in $required.Keys) {
+        if (-not $present.ContainsKey($key)) {
+            $lines += "$key=$($required[$key])"
+            $added = $true
+        }
+    }
+    if ($added) {
+        Set-Content -Path $envPath -Value $lines -Encoding UTF8
+        Write-Host '  Patched .env.local (missing realtime keys added)' -ForegroundColor Cyan
+    }
+
+    $normalized = $false
+    $out = foreach ($line in (Get-Content $envPath -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+        if ($line -match '^\s*(NEXT_PUBLIC_API_URL|NEXT_PUBLIC_WS_URL|STOCK_API_PROXY)\s*=\s*(.+)\s*$') {
+            $key = $Matches[1]
+            $val = $Matches[2].Trim()
+            if ($val -match 'localhost') {
+                $normalized = $true
+                "$key=$($val -replace 'localhost','127.0.0.1')"
+                continue
+            }
+        }
+        $line
+    }
+    if ($normalized) {
+        Set-Content -Path $envPath -Value $out -Encoding UTF8
+        Write-Host '  Normalized .env.local localhost -> 127.0.0.1 (API/WS/proxy)' -ForegroundColor Cyan
     }
 }
 
@@ -236,7 +315,8 @@ function Test-FrontendReady {
         $html = $page.Content
         if ($html -match '"statusCode"\s*:\s*500' -or $html -match 'Cannot find module') { return $false }
         if ($html -match 'missing required error components') { return $false }
-        if ($html -notmatch 'app-main|inv-investing|desktop-header') { return $false }
+        if ($html -notmatch 'app-main|desktop-header|critical-layout') { return $false }
+        if ($html -notmatch 'app-market-chrome-sticky--with-ticker') { return $false }
         if ($html -match 'href="(/_next/static/css/[^"]+\.css)') {
             $cssUrl = 'http://127.0.0.1:3000' + $Matches[1]
             $css = Invoke-WebRequest -Uri $cssUrl -UseBasicParsing -TimeoutSec 12
@@ -258,7 +338,7 @@ function Start-BackendProcess([bool]$UseDev) {
 
 function Start-FrontendProcess([bool]$UseDev) {
     if ($UseDev) {
-        $frontendCmd = "cd /d `"$frontend`" && npm run dev"
+        $frontendCmd = "cd /d `"$frontend`" && set WATCHPACK_POLLING=true&& npm run dev"
     } else {
         $frontendCmd = "cd /d `"$frontend`" && npm run start"
     }
@@ -280,6 +360,10 @@ function Invoke-FrontendBuild {
 
 function Invoke-BackendWarmup {
     if (-not (Test-BackendReady)) { return }
+    $warmupQuotes = Join-Path $root 'scripts\warmup-quotes.ps1'
+    if (Test-Path $warmupQuotes) {
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $warmupQuotes -ApiBase 'http://localhost:8000'
+    }
     try {
         Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/v1/integrations/apply' -Method Post -TimeoutSec 30 | Out-Null
         Write-Host '  integrations/apply completed (API keys and quotes)'
@@ -331,7 +415,7 @@ if ($AutoStart) { Write-Host ' (auto-start mode)' }
 Write-Host '=========================================='
 Write-Host ''
 
-Write-Host '[1/8] Tools (Python, Node; Docker recommended)...'
+Write-Host '[1/9] Tools (Python, Node; Docker recommended)...'
 if (-not (Test-CommandOnPath 'python')) {
     Write-Host '  [ERROR] python not found — install Python 3.11+ and add to PATH' -ForegroundColor Red
     Pause-IfInteractive
@@ -343,12 +427,13 @@ if (-not (Test-CommandOnPath 'npm')) {
     exit 1
 }
 
-Write-Host '[2/8] Free ports 8000 and 3000...'
+Write-Host '[2/9] Free ports 8000, 3000 and 3001...'
 Stop-PortListener 8000
 Stop-PortListener 3000
+Stop-PortListener 3001
 Start-Sleep -Seconds 1
 
-Write-Host '[3/8] Environment (.env, Postgres, venv, npm)...'
+Write-Host '[3/9] Environment (.env, Postgres, venv, npm)...'
 Ensure-BackendEnv
 Ensure-IntegrationDataDir
 Ensure-PostgresDocker | Out-Null
@@ -377,21 +462,31 @@ if (-not (Test-Path (Join-Path $frontend 'node_modules'))) {
     Pop-Location
 }
 
-if ($Clean -or (-not $SkipClean -and -not $Dev)) {
-    Write-Host '  Clearing .next cache...'
+if ($Clean -or -not $SkipClean) {
+    Write-Host '  Clearing .next cache (avoids broken clicks/CSS)...'
     Remove-Item -Recurse -Force (Join-Path $frontend '.next') -ErrorAction SilentlyContinue
 }
 
-Write-Host '[4/8] Start backend and frontend...'
+Write-Host '[4/9] Start backend and frontend...'
 if ($Dev) {
     Write-Host '  Dev mode: save files to hot-reload (Fast Refresh / uvicorn --reload)' -ForegroundColor Cyan
+    if (Test-FrontendBuildPresent) {
+        Write-Host '  Dev mode: removing production .next (dev/prod chunk conflict 방지)...' -ForegroundColor Cyan
+        Remove-Item -Recurse -Force (Join-Path $frontend '.next') -ErrorAction SilentlyContinue
+    }
 }
 Start-BackendProcess -UseDev:$Dev
 Start-Sleep -Seconds 3
 if (-not $Dev) {
-    if ($AutoStart -and (Test-FrontendBuildPresent)) {
+    $reuseProdBuild = $false
+    if ($AutoStart -and (Test-FrontendBuildPresent) -and -not (Test-FrontendBuildStale)) {
+        $reuseProdBuild = $true
         Write-Host '  AutoStart: reusing existing Next.js build (npm run start)'
-    } else {
+    }
+    if (-not $reuseProdBuild) {
+        if ((Test-FrontendBuildPresent) -and (Test-FrontendBuildStale)) {
+            Write-Host '  Source changed since last build — rebuilding Next.js...' -ForegroundColor Cyan
+        }
         Invoke-FrontendBuild
     }
 } else {
@@ -399,12 +494,13 @@ if (-not $Dev) {
 }
 Start-FrontendProcess -UseDev:$Dev
 
-Write-Host '[5/8] Wait for ready (quotes ~30-90s, up to 4 min)...'
+Write-Host '[5/9] Wait for ready (quotes ~30-90s, up to 4 min)...'
 $status = Wait-ServersReady -MaxIterations 120
 
 if (-not $status.Frontend -and $status.Backend) {
     Write-Host '[4b] Frontend not ready — clearing .next and restarting...'
     Stop-PortListener 3000
+    Stop-PortListener 3001
     Start-Sleep -Seconds 2
     Remove-Item -Recurse -Force (Join-Path $frontend '.next') -ErrorAction SilentlyContinue
     if (-not $Dev) { Invoke-FrontendBuild }
@@ -414,11 +510,27 @@ if (-not $status.Frontend -and $status.Backend) {
     if ($retry.Frontend) { $status.Frontend = $true }
 }
 
-Write-Host '[6/8] Warmup (integrations apply)...'
+if ($status.Frontend -and -not (Test-FrontendJsChunks '/markets')) {
+    Write-Host '[4c] JS chunks 400/404 (stale .next) — rebuilding frontend...' -ForegroundColor Yellow
+    Stop-PortListener 3000
+    Stop-PortListener 3001
+    Start-Sleep -Seconds 2
+    Remove-Item -Recurse -Force (Join-Path $frontend '.next') -ErrorAction SilentlyContinue
+    if (-not $Dev) { Invoke-FrontendBuild }
+    Start-FrontendProcess -UseDev:$Dev
+    Start-Sleep -Seconds 8
+    $chunkRetry = Wait-ServersReady -MaxIterations 90
+    if (-not $chunkRetry.Frontend) { $status.Frontend = $false }
+    elseif (-not (Test-FrontendJsChunks '/markets')) {
+        Write-Host '  [WARN] JS chunks still failing — run stop-dev.bat then start.bat -Dev' -ForegroundColor Yellow
+    }
+}
+
+Write-Host '[6/9] Warmup (integrations apply)...'
 Invoke-BackendWarmup
 Start-BackgroundDocxSeed
 
-Write-Host '[7/8] verify-stack.ps1...'
+Write-Host '[7/9] verify-stack.ps1...'
 $verifyOk = $false
 if ($status.Backend -and $status.Frontend -and (Test-Path $verifyScript)) {
     & powershell -NoProfile -ExecutionPolicy Bypass -File $verifyScript
@@ -428,8 +540,21 @@ if ($status.Backend -and $status.Frontend -and (Test-Path $verifyScript)) {
     $verifyOk = ($status.Backend -and $status.Frontend)
 }
 
-Write-Host '[8/8] Done...'
-if ($status.Backend -and $status.Frontend -and $verifyOk) {
+Write-Host '[8/9] verify-realtime.ps1 (WS push)...'
+$realtimeOk = $false
+$realtimeScript = Join-Path $root 'scripts\verify-realtime.ps1'
+if ($status.Backend -and (Test-Path $realtimeScript)) {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $realtimeScript
+    if ($LASTEXITCODE -eq 0) { $realtimeOk = $true }
+    else {
+        Write-Host '  [WARN] Realtime/WS check failed — UI falls back to REST polling' -ForegroundColor Yellow
+    }
+} else {
+    $realtimeOk = $status.Backend
+}
+
+Write-Host '[9/9] Done...'
+if ($status.Backend -and $status.Frontend -and $verifyOk -and $realtimeOk) {
     Write-Host ''
     Write-Host 'All services ready.' -ForegroundColor Green
     Write-FeatureLinks
@@ -444,6 +569,7 @@ Write-Host 'Some steps did not complete.' -ForegroundColor Yellow
 Write-Host "  Backend:  $(if ($status.Backend) { 'OK' } else { 'wait/error — check Stock Backend window' })"
 Write-Host "  Frontend: $(if ($status.Frontend) { 'OK' } else { 'wait/error — check Stock Frontend window' })"
 Write-Host "  Verify:   $(if ($verifyOk) { 'OK' } else { 'failed — run scripts\verify-stack.ps1' })"
+Write-Host "  Realtime: $(if ($realtimeOk) { 'OK (WS + LiveStockQuerySync)' } else { 'WARN — scripts\verify-realtime.ps1' })"
 Write-Host '  Broken CSS: run stop-dev.bat then start again (.next rebuild)'
 Write-Host '  Manual check: http://127.0.0.1:8000/api/v1/market/cache-status'
 if ($status.Backend) {

@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.phone_verification import (
     consume_verification_token,
     normalize_phone,

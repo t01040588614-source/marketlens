@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Stop"
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
 $fail = 0
 
 function Write-Ok($msg) { Write-Host "[OK] $msg" -ForegroundColor Green }
@@ -41,9 +42,8 @@ try {
     Write-Bad "Market refresh: $($_.Exception.Message)"
 }
 
-$root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$py = Join-Path $root 'stock-backend\venv\Scripts\python.exe'
-$wsScript = Join-Path $root 'scripts\verify-realtime-ws.py'
+$py = Join-Path $ProjectRoot 'stock-backend\venv\Scripts\python.exe'
+$wsScript = Join-Path $ProjectRoot 'scripts\verify-realtime-ws.py'
 if ((Test-Path $py) -and (Test-Path $wsScript)) {
     & $py $wsScript
     if ($LASTEXITCODE -ne 0) { $fail++ }

@@ -19,6 +19,8 @@ dependencies = [
     "redis>=5.0.0",
     "aiohttp>=3.10.0",
     "yfinance>=0.2.54",
+    "finance-datareader>=0.9.50",
+    "bcrypt>=4.0.0",
     "websockets>=14.0",
 ]
 
@@ -28,8 +30,64 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=6.0.0",
     "aiosqlite>=0.20.0",
+    "ruff>=0.9.0",
 ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["app", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "UP",
+    "B",
+    "BLE",
+    "DTZ",
+    "PIE",
+    "RUF",
+    "TRY",
+]
+ignore = [
+    "B008",
+    "TRY401",
+    "TRY003",
+    "TRY300",
+    "DTZ005",
+    "RUF001",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"app/main.py" = ["BLE001"]
+"stock-backend/app/main.py" = ["BLE001"]
+"app/services/market_data.py" = ["BLE001"]
+"app/services/websocket_manager.py" = ["BLE001", "RUF006"]
+"app/services/chart_service.py" = ["BLE001"]
+"app/services/stock_providers/*.py" = ["BLE001"]
+"app/api/routes/market.py" = ["BLE001", "RUF006"]
+"app/api/routes/ws.py" = ["BLE001", "RUF006"]
+"app/services/kr_dashboard_service.py" = ["BLE001", "TRY003"]
+"app/services/index_service.py" = ["BLE001"]
+"app/services/krx_listing_cache.py" = ["BLE001"]
+"app/services/korea_valuation_cache.py" = ["BLE001"]
+"app/services/yahoo_history.py" = ["BLE001"]
+"tests/**" = ["BLE001", "DTZ011", "DTZ007"]
+"app/data_ingest/**" = ["BLE001"]
+"app/db/**" = ["BLE001"]
+"app/integrations/**" = ["BLE001"]
+"app/services/chart_events_service.py" = ["BLE001"]
+"app/services/economic_calendar_service.py" = ["BLE001"]
+"app/services/valuation_insights.py" = ["BLE001"]
+"app/services/accounts_service.py" = ["DTZ011"]
+"app/services/us_economic_calendar.py" = ["DTZ007"]
+"app/services/kis_portfolio_sync.py" = ["BLE001"]
+"app/services/kis_realtime_service.py" = ["BLE001"]
+"app/services/price_alert_worker.py" = ["BLE001"]
+"scripts/**" = ["E402", "E501", "BLE001", "B007"]

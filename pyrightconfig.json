@@ -1,0 +1,18 @@
+{
+  "include": ["stock-backend/app", "stock-backend/tests"],
+  "exclude": [
+    "**/node_modules",
+    "**/.next",
+    "**/venv",
+    "**/__pycache__",
+    "**/.ruff_cache",
+    "**/.pytest_cache"
+  ],
+  "venvPath": "stock-backend",
+  "venv": "venv",
+  "extraPaths": ["stock-backend"],
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true,
+  "reportMissingModuleSource": false
+}

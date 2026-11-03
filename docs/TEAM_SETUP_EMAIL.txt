@@ -1,0 +1,16 @@
+MarketLens / krstock — Docker 실행 (bat·ps1 없이)
+
+1) Docker Desktop 실행
+2) 프로젝트 루트에서 PowerShell 또는 CMD:
+
+   copy .env.example .env
+   docker compose up --build -d
+
+3) 브라우저
+   http://127.0.0.1:3000/markets
+   http://127.0.0.1:8000/docs
+
+종료: docker compose down
+
+※ Gmail로 받은 zip에는 보안상 .bat / .ps1 이 빠져 있습니다.
+   전체 패키지(실행 bat 포함)는 Google Drive 링크로 받으세요.

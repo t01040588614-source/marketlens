@@ -43,8 +43,8 @@
 
 | 파일 | 설명 |
 |------|------|
-| **`주식대시보드_실행.bat`** | **더블클릭 한 번** — Docker Postgres·계좌·DOCX DB, 백(8000)·프론트(3000), API키 허브, ETL(최초 1회), 점검 후 브라우저 |
-| **`주식대시보드_Docker.bat`** | **Docker Desktop** — Postgres+API+Next를 **컨테이너**로 한 번에 빌드·기동 (`docker compose up --build`) |
+| **`주식대시보드_통합.bat`** | **더블클릭 = 로컬 개발 실행**(API 8000 + 화면 3000, 점검 후 브라우저) · `주식대시보드_통합.bat menu` → 2 프로덕션 · 3 Docker 전체 · 4 Docker 중지 · 5 서버 중지 · 6~9 E2E |
+| **`start.bat`** | PowerShell 런처 직접 호출 (`-Dev` / `-Prod` / `-SkipClean` / `-NoBrowser`) |
 | **`stop-dev.bat`** | 8000·3000 리스닝 프로세스 종료 |
 | **`자동시작_등록.bat`** | **PC 켜고 로그인하면** 90초 후 MarketLens 자동 기동 (작업 스케줄러) |
 | **`자동시작_해제.bat`** | 위 자동 기동 등록 해제 |
@@ -52,16 +52,16 @@
 
 ### PC 재부팅 후 자동 실행
 
-1. **최초 1회** `주식대시보드_실행.bat`으로 Next.js 빌드까지 완료해 두세요. (이후 자동 기동은 빌드가 있으면 `npm run start`만 사용)
+1. **최초 1회** `주식대시보드_통합.bat` 메뉴 **2**(프로덕션)로 Next.js 빌드까지 완료해 두세요. (이후 자동 기동은 빌드가 있으면 `npm run start`만 사용)
 2. **`자동시작_등록.bat`** 더블클릭 → Windows **작업 스케줄러**에 `MarketLens-AutoStart` 등록
 3. **Docker Desktop** → *Settings → General* → **Start Docker Desktop when you sign in** 켜기 (PostgreSQL·전체 기능용)
 4. 재부팅 후 **로그인 약 90초 뒤** 백엔드(8000)·프론트(3000)가 켜지고, 준비되면 브라우저가 열립니다.
-5. 문제 시 로그: `%LOCALAPPDATA%\MarketLens\autostart.log` · 수동 점검: `주식대시보드_실행.bat`
+5. 문제 시 로그: `%LOCALAPPDATA%\MarketLens\autostart.log` · 수동 점검: `주식대시보드_통합.bat` 메뉴 1
 
 브라우저 자동 열기를 끄려면:  
 `powershell -File scripts\install-autostart.ps1 -NoBrowser`
 
-CSS가 꼬였을 때: `stop-dev.bat` 후 `주식대시보드_실행.bat` (기본으로 `.next` 삭제). 빠른 재기동만: `start.bat -SkipClean`.
+CSS가 꼬였을 때: `stop-dev.bat` 후 `주식대시보드_통합.bat` 메뉴 1 (기본으로 `.next` 삭제). 빠른 재기동만: `start.bat -Dev -SkipClean`.
 
 **시세:** Yahoo `fast_info` 현재가 → 백엔드 캐시(장중 ~1초 fast·구독 종목) → WebSocket 1초 푸시. 표·티커·지수는 같은 캐시 기준입니다.
 

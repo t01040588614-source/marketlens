@@ -1,6 +1,6 @@
 # PostgreSQL 16 + FastAPI + Next.js (전체 스택)
 # 사용: copy .env.example .env  →  docker compose up --build
-# 또는: 주식대시보드_Docker.bat
+# 또는: 주식대시보드_통합.bat (3·4)  /  로컬 dev: 통합.bat 더블클릭
 name: krstock
 
 services:
@@ -25,19 +25,45 @@ services:
       retries: 8
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   api:
     build:
       context: ./stock-backend
       dockerfile: Dockerfile
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://krstock:krstockpass@db:5432/krstock}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-jwt-secret-change-in-production-32b}
       CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000","http://127.0.0.1:3000"]}
       DEBUG: "false"
+      INTEGRATIONS_ALLOW_UI_SAVE: ${INTEGRATIONS_ALLOW_UI_SAVE:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AI_CHAT_PROVIDER: ${AI_CHAT_PROVIDER:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
     ports:
       - "8000:8000"
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test:
@@ -59,10 +85,13 @@ services:
       dockerfile: Dockerfile
       args:
         STOCK_API_PROXY: ${STOCK_API_PROXY:-http://api:8000}
+        NEXT_PUBLIC_QUOTE_REFRESH_PRESET: ${NEXT_PUBLIC_QUOTE_REFRESH_PRESET:-live}
     environment:
+      # STOCK_API_PROXY: container→api (SSR rewrites). NEXT_PUBLIC_*: browser (로컬 bat과 동일 127.0.0.1)
       STOCK_API_PROXY: ${STOCK_API_PROXY:-http://api:8000}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api:8000/api/v1}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://127.0.0.1:8000/api/v1}
       NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://127.0.0.1:8000/api/v1/ws/stocks}
+      NEXT_PUBLIC_QUOTE_REFRESH_PRESET: ${NEXT_PUBLIC_QUOTE_REFRESH_PRESET:-live}
     ports:
       - "3000:3000"
     depends_on:

@@ -1,5 +1,4 @@
 import pytest
-
 from app.services import news_feed_service as svc
 
 

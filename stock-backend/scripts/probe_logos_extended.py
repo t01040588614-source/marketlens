@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import sys
 
 from app.data.asia_universe import ASIA_UNIVERSE
 from app.data.europe_universe import EUROPE_UNIVERSE
