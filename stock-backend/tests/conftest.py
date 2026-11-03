@@ -31,6 +31,8 @@ def anyio_backend():
 
 @pytest.fixture(scope="function", autouse=True)
 async def setup_test_db():
+    import app.models  # noqa: F401 — register ORM tables
+
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

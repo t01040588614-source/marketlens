@@ -1,0 +1,3 @@
+# 모노레포 워크스페이스 — Ruff 확장이 루트에서 설정을 찾을 수 있도록 백엔드 설정을 확장
+[tool.ruff]
+extend = "stock-backend/pyproject.toml"

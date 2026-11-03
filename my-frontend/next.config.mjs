@@ -8,13 +8,24 @@ function normalizeBackendOrigin(raw) {
   const trimmed = (raw || "").replace(/\/$/, "");
   if (!trimmed) return "http://127.0.0.1:8000";
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  // Render fromService.host 는 내부 이름(예: marketlens-api-h3h9)만 준다 → 공개 주소로 변환
-  if (/^[a-z0-9-]+$/i.test(trimmed) && trimmed !== "localhost") {
-    return `https://${trimmed}.onrender.com`;
+  const host = trimmed.split("/")[0].split(":")[0];
+  // Render fromService.host 는 짧은 이름(예: marketlens-api-h3h9)만 준다 → 공개 HTTPS 주소로.
+  // 무료 서비스는 내부망 요청을 받을 수 없어서 http://이름:10000 은 쓰지 않음 (render.com/docs/private-network)
+  if (/^[a-z0-9-]+$/i.test(host) && host !== "localhost") {
+    return `https://${host}.onrender.com`;
   }
   return `https://${trimmed}`;
 }
-const backendOrigin = normalizeBackendOrigin(process.env.STOCK_API_PROXY);
+/** Render 에서 NEXT_PUBLIC_API_URL 에 공개 URL 전체를 넣었으면 그 값을 우선 (짧은 이름과 실제 주소가 다를 때) */
+function pickBackendOrigin() {
+  const proxy = (process.env.STOCK_API_PROXY || "").trim();
+  const publicUrl = (process.env.NEXT_PUBLIC_API_URL || "").trim();
+  if (proxy && !/^https?:\/\//i.test(proxy) && /^https:\/\/[^/]+\.onrender\.com/i.test(publicUrl)) {
+    return publicUrl.replace(/\/api\/v1\/?$/, "").replace(/\/$/, "");
+  }
+  return normalizeBackendOrigin(proxy);
+}
+const backendOrigin = pickBackendOrigin();
 
 const lwcProduction = path.join(
   __dirname,

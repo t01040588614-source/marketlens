@@ -28,7 +28,19 @@
 
 ## 미적용 / 차이
 
-- NestJS → **FastAPI** (동일 REST 계약, prefix `/api/v1/kr`)
-- 실시간 WS·미국 시장·포트폴리오는 기존 **주식대시** 기능 유지
-- KIS HTS급 틱·유료 재무 API는 **시드 + FDR/Yahoo 캐시**로 대체
+### M1 — NestJS monorepo → FastAPI (**의도적 대체**)
+
+DOCX의 `kr-stock-dashboard` monorepo(`apps/api` NestJS 10 + TypeORM)는 **별도 구현하지 않습니다.**  
+REST 리소스·필터·스크리너·계좌 등 **동일 API 계약**을 `stock-backend/` **FastAPI + SQLAlchemy**로 제공합니다 (`/api/v1/stocks`, `/api/v1/kr/*`, `/api/v1/accounts` 등).  
+이는 누락이 아니라 **스택 선택의 의도적 대체**이며, 구현 상태는 [SPEC_STATUS.md](./SPEC_STATUS.md) **M1**을 따릅니다.
+
+### M2 — KIS HTS 틱 (**명세 대비 유일 ❌**)
+
+- **미구현:** KIS(또는 타 증권사) **HTS급 체결 틱** WebSocket — DOCX가 가정하는 틱 단위 실시간 스트림.
+- **대신 제공:** **캐시 기반 준실시간 WS** — `GET`/`fast` 갱신으로 쌓인 캐시를 `WS /ws/stocks`로 브로드캐스트. **장중 정규 세션** 기준 푸시 주기 약 **0.35초** (`ws_broadcast_interval`; Yahoo 429 시 완화).
+- **투자·QA 주의:** 화면의 「실시간」·가격 플래시는 **HTS 틱과 동일하지 않습니다.** 일봉·재무 ingest는 FDR/Yahoo·시드; 유료 재무 API 전면 대체는 별도 한계.
+
+### 기타
+
+- 실시간 WS·미국 시장·포트폴리오는 기존 **MarketLens(주식대시)** 기능 유지
 - 계좌 기능은 **PostgreSQL** 필요 (SQLite만이면 시세·로컬 스크리너만)

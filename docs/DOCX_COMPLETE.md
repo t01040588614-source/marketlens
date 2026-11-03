@@ -15,7 +15,7 @@ docker compose up --build
 | API | http://localhost:8000/docs |
 | Postgres | localhost:5432 (krstock/krstockpass) |
 
-로컬만 DB: `docker compose up -d db` 후 `주식대시보드_실행.bat`
+로컬만 DB: `docker compose up -d db` 후 `주식대시보드_통합.bat` 메뉴 1
 
 ## ETL (DOCX §5)
 
@@ -51,6 +51,14 @@ DB 테이블: `kr_stocks`, `kr_stock_quotes`, `kr_fundamental_snapshots`, `kr_st
 - `/api/stocks/*` → FastAPI `/api/v1/stocks/*`
 - `/api/accounts/*` → FastAPI `/api/v1/accounts/*`
 
-## NestJS → FastAPI
+## NestJS → FastAPI (**M1: 의도적 대체**)
 
-DOCX의 NestJS/TypeORM monorepo는 **구현하지 않고**, 동일 REST 계약을 FastAPI + SQLAlchemy로 제공합니다. 상세: [DOCX_SPEC_MAPPING.md](./DOCX_SPEC_MAPPING.md)
+DOCX §3의 **NestJS 10 + TypeORM** `apps/api` monorepo는 **의도적으로 구현하지 않습니다.**  
+동일 REST **API 계약**(stocks·quotes·news·consensus·screeners·accounts, Next rewrite 경로 포함)을 **`stock-backend/` FastAPI + SQLAlchemy**로 충족합니다. NestJS 코드·패키지는 저장소에 없으며, 이는 **누락이 아닌 대체**입니다.
+
+- 매핑·경로: [DOCX_SPEC_MAPPING.md](./DOCX_SPEC_MAPPING.md)
+- 체크리스트: [SPEC_STATUS.md](./SPEC_STATUS.md) **M1**
+
+## 실시간 시세 (**M2: HTS 틱 ❌**)
+
+DOCX·HTS 수준 **체결 틱**은 **미구현(유일 ❌)** 입니다. MarketLens 「실시간」은 **캐시 기반 준실시간 WebSocket** — 장중 약 **0.35초** 캐시 푸시. 상세: [SPEC_STATUS.md](./SPEC_STATUS.md) **M2**, [REQUIREMENTS.md](./REQUIREMENTS.md) §3.

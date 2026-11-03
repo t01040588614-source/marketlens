@@ -1,22 +1,2 @@
-target-version = "py311"
-line-length = 100
-src = ["app", "tests"]
-
-[lint]
-select = [
-  "E", "F", "I", "UP", "B", "BLE", "DTZ", "PIE", "RUF", "TRY",
-]
-ignore = [
-  "B008",   # FastAPI Depends() in defaults
-  "TRY401", # logger.exception already includes exc
-]
-
-[lint.per-file-ignores]
-"app/main.py" = ["BLE001"]
-"app/services/market_data.py" = ["BLE001"]
-"app/services/websocket_manager.py" = ["BLE001", "S110"]
-"app/services/chart_service.py" = ["BLE001"]
-"app/services/stock_providers/*.py" = ["BLE001", "S112"]
-"app/api/routes/ws.py" = ["BLE001"]
-"app/api/routes/market.py" = ["BLE001"]
-"app/services/kr_dashboard_service.py" = ["BLE001", "TRY003"]
+# Ruff VS Code / CLI: pyproject.toml [tool.ruff] 를 단일 설정으로 사용
+extend = "pyproject.toml"

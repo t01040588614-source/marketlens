@@ -7,7 +7,7 @@
 | 문서 | 용도 |
 |------|------|
 | [REQUIREMENTS.md](./REQUIREMENTS.md) | README·대화 기준 요구사항 정리 |
-| [SPEC_STATUS.md](./SPEC_STATUS.md) | DOCX 명세 대비 구현 체크리스트 |
+| [SPEC_STATUS.md](./SPEC_STATUS.md) | DOCX 명세 대비 구현 체크리스트 (**M1** NestJS→FastAPI 의도적 대체, **M2** HTS 틱 유일 ❌) |
 | [DOCX_SPEC_MAPPING.md](./DOCX_SPEC_MAPPING.md) | NestJS 명세 → FastAPI/Next 매핑 |
 | [spec-from-docx.txt](./spec-from-docx.txt) | DOCX 본문 추출 |
 | [명세_카서.docx](./명세_카서.docx) | 원본 DOCX 사본 |

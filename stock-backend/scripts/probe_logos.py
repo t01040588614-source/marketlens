@@ -5,7 +5,6 @@ import asyncio
 import sys
 
 import httpx
-
 from app.data.korea_universe import KOREA_UNIVERSE
 from app.data.seed_stocks import US_SYMBOLS
 from app.services.stock_logo_service import fetch_stock_logo, logo_candidate_urls

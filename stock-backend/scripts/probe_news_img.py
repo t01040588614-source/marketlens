@@ -1,5 +1,6 @@
-import httpx
 from xml.etree import ElementTree as ET
+
+import httpx
 
 r = httpx.get(
     "https://news.google.com/rss/search?q=%EC%A6%9D%EC%8B%9C&hl=ko&gl=KR&ceid=KR:ko",

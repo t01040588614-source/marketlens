@@ -1,8 +1,10 @@
 {
   "include": ["app", "tests"],
+  "exclude": ["**/venv", "**/__pycache__", "**/.ruff_cache", "**/.pytest_cache"],
   "venvPath": ".",
   "venv": "venv",
   "extraPaths": ["."],
   "pythonVersion": "3.11",
-  "typeCheckingMode": "basic"
+  "typeCheckingMode": "basic",
+  "reportMissingModuleSource": false
 }

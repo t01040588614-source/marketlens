@@ -1,6 +1,7 @@
 # Stock API Backend (MarketLens)
 
-한국(FDR KRX 우선) · 미국(Yahoo 일괄) 시세, WebSocket 캐시 푸시, 포트폴리오 API.
+한국(FDR KRX 우선) · 미국(Yahoo 일괄) 시세, **캐시 기반 준실시간 WebSocket**, 포트폴리오 API.  
+DOCX NestJS **`apps/api` → 본 FastAPI 의도적 대체(M1)** · **HTS 틱 미구현(M2)** — [../docs/SPEC_STATUS.md](../docs/SPEC_STATUS.md)
 
 ## 시작하기
 
@@ -30,7 +31,7 @@ http://127.0.0.1:8000/docs
 | GET | `/api/v1/market/sectors` | 섹터 |
 | GET | `/api/v1/market/cache-status` | 캐시·소스(fdr/yahoo/seed) |
 | POST | `/api/v1/market/refresh` | 백그라운드 갱신 트리거 |
-| WS | `/ws/stocks` | quotes · ticks · indices (1초, 캐시 기반) |
+| WS | `/ws/stocks` | quotes · ticks · indices (**캐시 푸시**, 장중 ~**0.35s** — HTS 체결 틱 아님) |
 | * | `/api/v1/portfolio` | CRUD (JWT) |
 
 ## 데이터 소스
