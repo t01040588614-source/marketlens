@@ -70,6 +70,8 @@ class MarketDataService:
         self._ensure_fresh_default = 18
         self._index_interval = 25
         self._background_tasks: set[asyncio.Task] = set()
+        self._index_refresh_task: asyncio.Task | None = None
+        self._last_index_scheduled: datetime | None = None
         self._last_ws_driven_refresh: datetime | None = None
         self._last_full_scheduled: datetime | None = None
         self._symbol_last_refresh: dict[str, datetime] = {}
@@ -748,6 +750,7 @@ class MarketDataService:
             self.schedule_refresh()
             return
         limit = max_age_sec if max_age_sec is not None else self._ensure_fresh_default
+        limit = max(limit, self._configured_full_gap())
         lu = self._last_updated
         if lu is None:
             self.schedule_refresh()
@@ -798,8 +801,28 @@ class MarketDataService:
             return None
         return (utc_now() - lu).total_seconds()
 
+    def index_refresh_due(self) -> bool:
+        """지수 갱신을 새로 걸어도 되는지 — 진행 중이거나 지수 주기 안이면 False."""
+        task = self._index_refresh_task
+        if task is not None and not task.done():
+            return False
+        last = self._last_index_scheduled
+        if last is None:
+            return True
+        return (utc_now() - last).total_seconds() >= max(5, int(self._index_interval))
+
+    def run_index_refresh(self, coro) -> None:
+        """지수 갱신 코루틴을 하나만 돌게 등록 (index_refresh_due 와 짝)."""
+        self._last_index_scheduled = utc_now()
+        task = asyncio.create_task(coro)
+        self._index_refresh_task = task
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+
     def schedule_index_refresh(self) -> None:
-        """지수 캐시만 백그라운드 갱신 (WS 루프 블로킹 방지)."""
+        """지수 캐시만 백그라운드 갱신 (WS 루프 블로킹 방지). 중복·과다 호출은 건너뜀."""
+        if not self.index_refresh_due():
+            return
 
         async def _run():
             try:
@@ -807,14 +830,21 @@ class MarketDataService:
             except Exception as exc:
                 logger.warning("Scheduled index refresh failed: %s", exc)
 
-        task = asyncio.create_task(_run())
-        self._background_tasks.add(task)
-        task.add_done_callback(self._background_tasks.discard)
+        self.run_index_refresh(_run())
+
+    @staticmethod
+    def _configured_full_gap() -> float:
+        """MARKET_REFRESH_FULL_SEC 가 있으면(저사양 배포) 그보다 자주 전체 갱신하지 않음."""
+        from app.core.config import settings
+
+        full = settings.MARKET_REFRESH_FULL_SEC
+        return float(full) if full else 0.0
 
     def schedule_refresh(self, min_gap: float = 3.0) -> None:
         """전체 갱신을 백그라운드로 요청 (HTTP 응답 지연 방지)."""
         if self._refresh_lock.locked():
             return
+        min_gap = max(min_gap, self._configured_full_gap())
         now = utc_now()
         if self._last_full_scheduled is not None:
             if (now - self._last_full_scheduled).total_seconds() < min_gap:

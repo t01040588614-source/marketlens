@@ -1,6 +1,6 @@
 import axios from "axios";
 import { api, attachAuthSessionResponseInterceptor, setAuthToken } from "@/lib/api";
-import { getServerApiBaseUrl } from "@/lib/apiBase";
+import { getApiBaseUrl, getServerApiBaseUrl } from "@/lib/apiBase";
 
 function toCamelCase(obj: unknown): unknown {
   if (Array.isArray(obj)) return obj.map(toCamelCase);
@@ -16,11 +16,15 @@ function toCamelCase(obj: unknown): unknown {
   return obj;
 }
 
-/** DOCX 명세 /api/stocks → 백엔드 /api/v1/stocks */
+/**
+ * DOCX 명세 /api/stocks → 백엔드 /api/v1/stocks.
+ * 브라우저도 다른 API와 같은 주소(getApiBaseUrl)를 씀 — 로컬은 /api/v1 프록시,
+ * Render는 API 직접 호출 (웹 서버를 한 번 더 거치면 무료 서버에서 10초 가까이 걸림).
+ */
 const docxApi = axios.create({ headers: { "Content-Type": "application/json" } });
 
 docxApi.interceptors.request.use((config) => {
-  config.baseURL = typeof window !== "undefined" ? "/api" : getServerApiBaseUrl();
+  config.baseURL = typeof window !== "undefined" ? getApiBaseUrl() : getServerApiBaseUrl();
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("token");
     if (token && config.headers) {

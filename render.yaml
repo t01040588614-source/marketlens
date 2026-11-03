@@ -72,5 +72,6 @@ services:
           type: web
           name: marketlens-api
           property: host
+      # 무료 API(0.1 CPU) — 가격은 WebSocket이 밀어 주므로 REST 폴링은 '균형'(권장)으로
       - key: NEXT_PUBLIC_QUOTE_REFRESH_PRESET
-        value: live
+        value: balanced

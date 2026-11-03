@@ -69,8 +69,19 @@ async def list_indices(
 
     cached = _filter_index_rows(market_data.get_indices(), id_list, category)
     if cached:
-        asyncio.create_task(_refresh_indices_background(id_list, category))
+        # 캐시가 있으면 바로 응답. 백그라운드 갱신은 지수 주기에 한 번만
+        # (요청마다 Yahoo 호출하면 무료 서버 CPU 과부하)
+        if market_data.index_refresh_due():
+            market_data.run_index_refresh(_refresh_indices_background(id_list, category))
         return cached
+
+    # 캐시가 비어 있음(서버가 막 깨어남 등): Yahoo 응답을 최대 12초 기다리지 않고
+    # 참고 시세로 바로 응답 + 실시세는 백그라운드에서 한 번만 받아 캐시·WebSocket 으로 반영
+    fallback = index_service.static_indices(id_list, category=category)
+    if market_data.index_refresh_due():
+        market_data.run_index_refresh(_refresh_indices_background(id_list, category))
+    if fallback:
+        return fallback
 
     try:
         rows = await asyncio.wait_for(
@@ -82,11 +93,6 @@ async def list_indices(
             return rows
     except Exception as exc:
         logger.warning("Index API fetch failed: %s", exc)
-
-    fallback = index_service.static_indices(id_list, category=category)
-    if fallback:
-        _merge_indices_cache(fallback, id_list, category)
-        return fallback
 
     raise HTTPException(
         status_code=503,

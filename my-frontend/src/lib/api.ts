@@ -376,6 +376,8 @@ export const stockApi = {
       krHolidayName?: string | null;
       usHolidayName?: string | null;
       wsPushIntervalSec?: number;
+      /** 백엔드 전체 시세 갱신 주기(초) — 무료 배포는 60 */
+      refreshIntervalSec?: number;
       yahooThrottled?: boolean;
       refreshMode?: string;
       wsBroadcastAlive?: boolean;
