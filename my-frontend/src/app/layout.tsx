@@ -9,6 +9,10 @@ import { CRITICAL_LAYOUT_CSS } from "@/lib/criticalStyles";
 import { brand } from "@/config/brand";
 import { getSiteUrl } from "@/lib/siteUrl";
 import { pageTitle, rootSiteDescription } from "@/lib/seo";
+import {
+  buildRenderPublicApiBaseFromEnv,
+  buildRenderPublicWsFromEnv,
+} from "@/lib/apiBase";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
@@ -80,6 +84,15 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const renderApiBase = buildRenderPublicApiBaseFromEnv();
+  const renderWsUrl = buildRenderPublicWsFromEnv();
+  /* Render 배포일 때만 값이 생김 — 빌드 때 굳은 NEXT_PUBLIC_* 대신 서버 env 로 API 주소를 브라우저에 알려 줌 */
+  const toScriptJson = (v: string) => JSON.stringify(v).replace(/</g, "\\u003c");
+  const renderRuntimeScript =
+    renderApiBase && renderWsUrl
+      ? `(function(){window.__ML_API_BASE=${toScriptJson(renderApiBase)};window.__ML_WS_URL=${toScriptJson(renderWsUrl)};})();`
+      : "";
+
   return (
     <html lang="ko" suppressHydrationWarning>
       <head>
@@ -90,6 +103,9 @@ export default function RootLayout({
         />
         <style id="critical-layout" dangerouslySetInnerHTML={{ __html: CRITICAL_LAYOUT_CSS }} />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        {renderRuntimeScript ? (
+          <script dangerouslySetInnerHTML={{ __html: renderRuntimeScript }} />
+        ) : null}
       </head>
       <body>
         <ReactQueryProvider>
