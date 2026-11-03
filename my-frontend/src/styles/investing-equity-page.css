@@ -1888,3 +1888,293 @@
   font-size: 12px;
   color: var(--text-muted);
 }
+
+/* 우측 사이드가 본문보다 길 때 아래가 잘리던 문제 → 사이드도 자기 높이만큼 늘어나게 */
+@media (min-width: 1024px) {
+  .inv-equity-page--toss .inv-layout-3col--equity-float-aside {
+    display: flex !important;
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .inv-equity-page--toss .inv-layout-3col--equity-float-aside .inv-split-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-right: 0;
+  }
+
+  .inv-equity-page--toss .inv-layout-3col--equity-float-aside .inv-side-slot--aside {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    flex: 0 0 clamp(300px, 26vw, 380px);
+    min-height: 0;
+    pointer-events: auto;
+  }
+}
+
+/* ─── 종목 개요: 차트·주요 통계 아래 추가 영역 ─── */
+.inv-overview-extras {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-top: 1px solid var(--border-color);
+}
+
+.inv-overview-extra-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 1279px) {
+  .inv-overview-extra-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.inv-overview-extra {
+  min-width: 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.inv-overview-extra-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--inv-table-header-bg, var(--surface-muted));
+}
+
+.inv-overview-extra-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.inv-overview-extra-sub,
+.inv-overview-extra-more {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.inv-overview-extra-more {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.inv-overview-extra-empty,
+.inv-overview-extra-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.inv-overview-extra-empty {
+  padding: var(--space-4);
+}
+
+.inv-overview-extra-table-wrap {
+  overflow-x: auto;
+}
+
+.inv-overview-extra-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.inv-overview-extra-table th,
+.inv-overview-extra-table td {
+  padding: 8px 14px;
+  text-align: right;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.inv-overview-extra-table th:first-child,
+.inv-overview-extra-table td:first-child {
+  text-align: left;
+}
+
+.inv-overview-extra-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.inv-overview-extra-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.inv-overview-months,
+.inv-overview-profile {
+  margin: 0;
+  padding: 8px 14px 12px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inv-overview-month,
+.inv-overview-profile-row {
+  display: grid;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.inv-overview-month {
+  grid-template-columns: 56px minmax(0, 1fr) 72px;
+}
+
+.inv-overview-month-label small {
+  margin-left: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.inv-overview-month-bar,
+.inv-overview-profile-bar {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--surface-muted);
+  overflow: hidden;
+}
+
+.inv-overview-month-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 5px;
+}
+
+.inv-overview-month-fill.is-up,
+.inv-overview-updown .is-up {
+  background: #e5484d;
+}
+
+.inv-overview-month-fill.is-down,
+.inv-overview-updown .is-down {
+  background: #3a7bff;
+}
+
+.inv-overview-month-pct,
+.inv-overview-profile-vol {
+  text-align: right;
+}
+
+.inv-overview-profile-row {
+  grid-template-columns: minmax(120px, auto) minmax(0, 1fr) 96px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.inv-overview-profile-range {
+  color: var(--text-secondary);
+}
+
+.inv-overview-profile-bar span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 5px;
+  background: var(--text-muted);
+  opacity: 0.55;
+}
+
+.inv-overview-profile-row.is-now {
+  background: var(--surface-muted);
+  font-weight: 700;
+}
+
+.inv-overview-profile-row.is-now .inv-overview-profile-bar span {
+  background: var(--primary);
+  opacity: 1;
+}
+
+.inv-overview-records {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+}
+
+.inv-overview-record {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.inv-overview-record-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.inv-overview-record strong {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.inv-overview-record-date {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.inv-overview-updown {
+  display: flex;
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+/* 종목 개요 맨 아래 — 시장 한눈에 (랭킹·뉴스·일정) */
+.inv-overview-market {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.inv-overview-market-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: var(--space-3) 0;
+}
+
+/* 높이가 제각각인 위젯을 빈칸 없이 위에서부터 차곡차곡 (벽돌식) */
+.inv-overview-market-grid {
+  columns: 3 260px;
+  column-gap: var(--space-3);
+}
+
+.inv-overview-market-grid > * {
+  min-width: 0;
+}
+
+.inv-overview-market-grid .inv-widget {
+  display: inline-block;
+  width: 100%;
+  break-inside: avoid;
+  margin: 0 0 var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+/* 넓은 본문에서는 뉴스·일정 박스를 안쪽 스크롤 없이 끝까지 */
+.inv-overview-market-grid .inv-widget--stack-compact,
+.inv-overview-market-grid .inv-widget--stack-compact * {
+  max-height: none !important;
+  overflow-y: visible !important;
+}

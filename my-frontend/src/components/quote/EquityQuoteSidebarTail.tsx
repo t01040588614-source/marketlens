@@ -56,16 +56,6 @@ export default function EquityQuoteSidebarTail({
       : usList?.find((s) => s.symbol === symbol);
   const sector = self?.sector?.trim();
 
-  const gainers = useMemo(() => {
-    const rows =
-      market === "korea"
-        ? (koreaList ?? []).map(koreaToEquity)
-        : (usList ?? []).map(usToEquity);
-    return [...rows]
-      .sort((a, b) => b.changePercent - a.changePercent || b.volume - a.volume)
-      .slice(0, 5);
-  }, [koreaList, usList, market]);
-
   const peerEquities = useMemo(() => {
     if (!sector) return [];
     if (market === "korea") {
@@ -84,10 +74,9 @@ export default function EquityQuoteSidebarTail({
 
   const tailSymbols = useMemo(() => {
     const set = new Set<string>([symbol]);
-    for (const g of gainers) set.add(g.symbol);
     for (const p of peerEquities) set.add(p.symbol);
     return Array.from(set);
-  }, [gainers, peerEquities, symbol]);
+  }, [peerEquities, symbol]);
 
   const { quotes, ticks } = useLiveSymbols(tailSymbols);
 
@@ -152,45 +141,6 @@ export default function EquityQuoteSidebarTail({
         </section>
       )}
 
-      <section className="inv-widget">
-        <header className="inv-widget-head">
-          <h3 className="inv-widget-title">오늘 상승 TOP</h3>
-          <Link href={market === "korea" ? "/korea" : "/us"} className="inv-widget-more">
-            더보기
-          </Link>
-        </header>
-        {gainers.length === 0 ? (
-          <p className="inv-widget-empty">목록을 불러오는 중…</p>
-        ) : (
-          <ul className="inv-widget-list">
-            {gainers.map((row) => {
-              const live = resolveLiveEquityQuoteFromMaps(row, quotes, ticks);
-              const d = market === "korea" ? 0 : 2;
-              return (
-                <li key={row.symbol}>
-                  <Link href={`/quote/${market}/${row.symbol}`} className="inv-widget-row">
-                    <StockNameWithLogo
-                      market={market}
-                      symbol={row.symbol}
-                      name={row.name}
-                      size={20}
-                      className="inv-widget-name inv-widget-name--with-logo"
-                      nameClassName="inv-widget-name-text"
-                    />
-                    <span className="inv-widget-right">
-                      <span className="tabular">{formatPrice(live.price, d)}</span>
-                      <span className={`tabular ${priceClass(live.changePercent)}`}>
-                        {formatPercent(live.changePercent)}
-                      </span>
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
       {peerEquities.length > 0 && (
         <section className="inv-widget">
           <header className="inv-widget-head">
@@ -227,7 +177,7 @@ export default function EquityQuoteSidebarTail({
 
       <section className="inv-widget inv-equity-sidebar-tail-hint">
         <p className="text-muted-sm">
-          차트·재무·뉴스는 본문 탭을, 지수·랭킹·인사이트는 아래 「더보기」를 사용하세요.
+          차트·재무·뉴스는 본문 탭을, 시장 랭킹·뉴스·일정은 본문 아래 「시장 한눈에」를, 인사이트는 아래 「더보기」를 사용하세요.
         </p>
       </section>
     </div>
