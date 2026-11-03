@@ -23,6 +23,8 @@ import {
   EquitySubTabPanel,
 } from "@/components/quote/InvestingEquityTabPanels";
 import { useEquityPageHash } from "@/hooks/useEquityPageHash";
+import EquityOverviewExtras from "@/components/quote/EquityOverviewExtras";
+import EquityOverviewMarket from "@/components/quote/EquityOverviewMarket";
 type QuotePageContentProps = {
   market: "korea" | "us";
   symbol: string;
@@ -195,6 +197,12 @@ function EquityQuotePageContent({
                         parentQuote={quoteView}
                       />
                     </Suspense>
+                  )}
+                  {tabs.primary === "general" && tabs.sub === "overview" && (
+                    <>
+                      <EquityOverviewExtras symbol={symbol} market={market} />
+                      <EquityOverviewMarket symbol={symbol} market={market} />
+                    </>
                   )}
                 </div>
               </>

@@ -3,12 +3,9 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import AppLink from "@/components/common/AppLink";
 import LoadingState from "@/components/common/LoadingState";
 import WatchlistStar from "@/components/market/WatchlistStar";
-import StockNameWithLogo from "@/components/market/StockNameWithLogo";
 import { stockApi } from "@/lib/api";
-import { resolveEquityIndexMembership } from "@/lib/indexMembership";
 import { addPriceAlert, inferDirection } from "@/lib/priceAlerts";
 import {
   buildSymbolTrendPrompt,
@@ -19,7 +16,6 @@ import { krxBidAsk } from "@/lib/krxTickSize";
 import { krStockApi } from "@/services/krStockApi";
 import {
   getStockChartEvents,
-  getStockKeyStats,
   getStockPeriodReturns,
   type ChartMarket,
 } from "@/services/chartApi";
@@ -94,12 +90,6 @@ export default function EquityQuoteSidebarExtras({
     staleTime: 120_000,
   });
 
-  const { data: keyStats } = useQuery({
-    queryKey: ["stockKeyStats", symbol, market],
-    queryFn: () => getStockKeyStats({ symbol, market: market as ChartMarket }),
-    staleTime: 60_000,
-  });
-
   const { data: chartEvents } = useQuery({
     queryKey: ["chartEventsSidebar", symbol, market],
     queryFn: () =>
@@ -143,10 +133,6 @@ export default function EquityQuoteSidebarExtras({
   });
 
   const fund = krDetail?.fundamental as Record<string, number | string | null> | undefined;
-  const board = (krDetail as { market?: string } | undefined)?.market;
-  const indexLinks = resolveEquityIndexMembership(market, {
-    board: board === "KOSDAQ" ? "KOSDAQ" : board === "KOSPI" ? "KOSPI" : undefined,
-  });
 
   const selfRow =
     market === "korea"
@@ -154,19 +140,9 @@ export default function EquityQuoteSidebarExtras({
       : usList?.find((s) => s.symbol === symbol);
 
   const sector = selfRow?.sector?.trim();
-  const peers = (market === "korea" ? koreaList : usList)
-    ?.filter((s) => s.symbol !== symbol && sector && s.sector === sector)
-    .sort((a, b) => b.volume - a.volume)
-    .slice(0, 5);
 
   const { bid, ask } =
     market === "korea" ? krxBidAsk(currentPrice) : { bid: currentPrice, ask: currentPrice };
-
-  const filledStatRows =
-    keyStats?.columns
-      ?.flat()
-      .filter((row) => row.value && row.value !== "-" && row.kind !== "locked")
-      .slice(0, 10) ?? [];
 
   const todayIso = new Date().toISOString().slice(0, 10);
   const upcomingEvents =
@@ -297,19 +273,6 @@ export default function EquityQuoteSidebarExtras({
         </WidgetShell>
       )}
 
-      {filledStatRows.length > 0 && (
-        <WidgetShell title="핵심 지표" moreHref="#chart">
-          <dl className="inv-equity-sidebar-dl">
-            {filledStatRows.map((row) => (
-              <div key={row.label}>
-                <dt>{row.label}</dt>
-                <dd className="tabular">{row.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </WidgetShell>
-      )}
-
       {upcomingEvents.length > 0 && (
         <WidgetShell title="배당·실적 일정">
           <ul className="inv-equity-sidebar-events">
@@ -387,45 +350,6 @@ export default function EquityQuoteSidebarExtras({
               </dd>
             </div>
           </dl>
-        </WidgetShell>
-      )}
-
-      {indexLinks.length > 0 && (
-        <WidgetShell title="관련 지수">
-          <ul className="inv-equity-sidebar-index-list">
-            {indexLinks.map((row) => (
-              <li key={row.id}>
-                <AppLink href={row.href}>{row.name}</AppLink>
-              </li>
-            ))}
-          </ul>
-        </WidgetShell>
-      )}
-
-      {peers && peers.length > 0 && (
-        <WidgetShell title={sector ? `同업종 · ${sector}` : "同업종"} moreHref={market === "korea" ? "/korea" : "/us"}>
-          <ul className="inv-widget-list">
-            {peers.map((row) => (
-              <li key={row.symbol}>
-                <Link href={`/quote/${market}/${row.symbol}`} className="inv-widget-row">
-                  <StockNameWithLogo
-                    market={market}
-                    symbol={row.symbol}
-                    name={row.name}
-                    size={20}
-                    className="inv-widget-name inv-widget-name--with-logo"
-                    nameClassName="inv-widget-name-text"
-                  />
-                  <span className="inv-widget-right">
-                    <span className="tabular">{formatPrice(row.price, decimals)}</span>
-                    <span className={`tabular ${priceClass(row.changePercent)}`}>
-                      {formatPercent(row.changePercent)}
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
         </WidgetShell>
       )}
 
